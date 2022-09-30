@@ -84,6 +84,7 @@
         "postinstall": "electron-builder install-app-deps",
         "build:win": "gulp build:win",
         "installer:win": "gulp installer:win",
+        "validate:win:signatures": "gulp validate:win:signatures",
         "start": "electron .",
         "test": "jest ."
     },

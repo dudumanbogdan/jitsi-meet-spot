@@ -11,6 +11,7 @@ import zip from 'gulp-zip';
 import fs from 'fs-extra';
 import { createWindowsInstaller } from 'electron-winstaller';
 import PluginError from 'plugin-error';
+import os from 'os';
 
 const buildPath = {};
 const describe = gitDescribeSync();
@@ -99,6 +100,53 @@ gulp.task('move:win_node_modules', () =>
     )
     .pipe(gulp.dest('build/dist'))
 );
+
+gulp.task('validate:win:signatures', done => {
+    if (os.platform() !== 'win32') {
+        done();
+
+        return;
+    }
+    const codeSignPath = path.join(
+    'node_modules',
+    'electron-winstaller',
+    'vendor',
+    'signtool.exe'
+    );
+    const pathToExec = path.join(
+    __dirname,
+    'build',
+    `${electronBuildOptions.name}.exe`
+    );
+    const codeSignArgs = [ 'verify', '/v', '/pa', pathToExec ];
+
+    console.log('validate:win:signatures args:', codeSignArgs);
+    const cmd = spawn(codeSignPath, codeSignArgs);
+
+    let outputStr = '';
+
+    cmd.stdout.on('data', output => {
+        outputStr += output.toString();
+    });
+    cmd.stderr.on('data', output => {
+        const outErr = output.toString();
+
+        console.error('signtool verify error:', outErr);
+        done(new Error(outErr));
+    });
+    cmd.on('exit', () => {
+        if (outputStr.indexOf('(sha256)') === -1) {
+            console.error('sha256 signature not found:', outputStr);
+            done(new Error(outputStr));
+        } else {
+            done();
+        }
+    })
+    .on('error', err => {
+        console.error('validate:win:signatures error', err.toString());
+        done(err);
+    });
+});
 
 function buildWindows() {
     const opts = clone(electronBuildOptions);
